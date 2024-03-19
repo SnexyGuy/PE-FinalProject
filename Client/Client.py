@@ -1,6 +1,12 @@
+import time
 import tkinter as tk
-from PIL import ImageGrab, ImageTk, ImageOps, Image
+from PIL import ImageGrab, ImageTk, ImageOps, Image, ImageChops, ImageDraw
+import socket
+import threading
 
+
+
+'''
 def resize(event):
 
     display = ImageGrab.grab()
@@ -22,6 +28,8 @@ def resize(event):
 
 
 if __name__ == "__main__":
+
+
     root=tk.Tk()
 
 
@@ -42,4 +50,26 @@ if __name__ == "__main__":
 
 
     displayed_screen.bind('<Configure>',resize)
-    root.mainloop()
+    root.mainloop()'''
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    host, port = input('enter host:port for new peer -> ').split(':')
+    node = Controlled(host, int(port))
+    node.start()
+
+    # Give some time for nodes to start listening
+    import time
+    time.sleep(2)
+
+    con_host, con_port = input('enter host:port to connect to -> ').split(':')
+    node.connect(con_host, int(con_port))
+    time.sleep(1)  # Allow connection to establish
+    node.send_data("Hello from node!")
