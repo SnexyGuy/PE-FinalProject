@@ -1,6 +1,8 @@
 import pickle
 import lzma
 from PIL import ImageGrab, ImageTk
+import sys
+import numpy as np
 
 
 
@@ -13,9 +15,9 @@ def send_screen():
 
 
 def receive_screen(compressed_screen):
-    uncompressed_screen=pickle.loads(compressed_screen)
+    uncompressed_screen=lzma.decompress(compressed_screen)
     unpickled_screen=pickle.loads(uncompressed_screen)
-    screen=ImageTk.PhotoImage(unpickled_screen)
-    return screen
+    return unpickled_screen
+
 
 

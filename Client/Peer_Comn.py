@@ -5,6 +5,7 @@ import time
 import lzma
 import socketMassages
 from PIL import ImageGrab
+import client_gui
 
 
 class Controlling:
@@ -15,6 +16,7 @@ class Controlling:
         self.listen_to=None
         self.send_to=None
         self.connected_to=None
+        self.window=client_gui.gui()
 
     def connect(self,peer_host, peer_port):
         try:
@@ -59,7 +61,9 @@ class Controlling:
                 data=connection.recv(1000000)
                 if not data:
                     break
-                print(f"Received data from {address} : {data.decode()}")
+                recv_img=socketMassages.receive_screen(data)
+                self.window.receive_screen(recv_img)
+                print(f"Received data from {address}")
             except socket.error:
                 break
         print(f"Connection from {address} closed")
@@ -67,6 +71,7 @@ class Controlling:
     def start(self):
         listen_thread=threading.Thread(target=self.listen)
         listen_thread.start()
+        self.window.start()
 
 
 class Controlled:
@@ -107,9 +112,9 @@ class Controlled:
 
     def send_data(self):
         while True:
-            data = input('send: ')
+            data = socketMassages.send_screen()
             try:
-                self.send_to.sendall(data.encode())
+                self.send_to.sendall(data)
             except socket.error as e:
                 print(f"Failed to send data - Error: {e}")
                 self.send_to.close()

@@ -1,5 +1,7 @@
 import time
 import tkinter as tk
+
+import PIL.Image
 from PIL import ImageGrab, ImageTk, ImageOps, Image, ImageChops, ImageDraw
 import socket
 import threading
@@ -66,10 +68,10 @@ class gui:
         self.displayed_screen.pack(fill='both', expand=True)
         self.Controlling_client_frame.pack(fill='both',expand=True)
         self.displayed_screen.bind('<Configure>', self.resize)
-
+        self.received_screen : PIL.Image.Image = ImageGrab.grab()
 
     def resize(self, event : tk.Event):
-        display = ImageGrab.grab()
+        display= self.received_screen
 
         display.thumbnail((event.width, event.height))
 
@@ -84,12 +86,33 @@ class gui:
         event.widget.image = display_img
         print(f'{event.width}x{event.height}')
 
+    def update_screen(self,img):
+
+        if img is None:
+            display= self.received_screen
+        else:
+            display=img
+            self.received_screen=img
+
+        display.thumbnail((self.displayed_screen.winfo_width(), self.displayed_screen.winfo_height()))
+
+        display_img = ImageTk.PhotoImage(display)
+
+        new_width = self.displayed_screen.winfo_width() - display_img.width()
+        new_height = self.displayed_screen.winfo_height() - display_img.height()
+
+        self.displayed_screen.itemconfigure(self.screen_image, image=display_img)
+        self.displayed_screen.moveto(self.screen_image, new_width / 2, new_height / 2)
+
+        self.displayed_screen.image = display_img
+
+    def receive_screen(self,screen):
+        self.update_screen(screen)
+
     def start(self):
         self.root.mainloop()
 
-if __name__ == "__main__":
-    window=gui()
-    window.start()
+
 
 
 
