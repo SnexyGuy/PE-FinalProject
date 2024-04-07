@@ -85,6 +85,7 @@ class gui:
 
         event.widget.image = display_img
         print(f'{event.width}x{event.height}')
+        self.root.update()
 
     def update_screen(self,img):
 
@@ -105,6 +106,7 @@ class gui:
         self.displayed_screen.moveto(self.screen_image, new_width / 2, new_height / 2)
 
         self.displayed_screen.image = display_img
+        self.root.update()
 
     def receive_screen(self,screen):
         self.update_screen(screen)

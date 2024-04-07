@@ -4,8 +4,10 @@ import pickle
 import time
 import lzma
 import socketMassages
-from PIL import ImageGrab
+from PIL import ImageGrab,Image
 import client_gui
+import sys
+import struct
 
 
 class Controlling:
@@ -57,14 +59,36 @@ class Controlling:
         return
     def handle_client(self,connection,address):
         while True:
-            try:
-                data=connection.recv(1000000)
-                if not data:
+            pack_size_b = connection.recv(4)
+            pack_size = int.from_bytes(pack_size_b, sys.byteorder)
+            if not pack_size_b:
+                continue
+
+            pack=b''
+            while len(pack)<pack_size:
+                recvmsg=connection.recv(1024)
+                pack = pack+recvmsg
+                if not recvmsg:
                     break
-                recv_img=socketMassages.receive_screen(data)
-                self.window.receive_screen(recv_img)
-                print(f"Received data from {address}")
-            except socket.error:
+
+
+            try:
+                if len(pack)==pack_size:
+                    unpack = struct.unpack(f'{len(pack)}s', pack)
+                    limg=lzma.decompress(unpack[0])
+                    cimg = Image.frombytes('RGB', (1920, 1080), limg)
+                    #print(cimg.tobytes())
+                    self.window.receive_screen(cimg)
+                    #cimg.show()
+                    pack = b''
+                else:
+                    pack=b''
+                    pack_size_b=0
+                    pack_size=0
+                    continue
+            except socket.error as err:
+                print(err)
+                connection.close()
                 break
         print(f"Connection from {address} closed")
         self.listen_to.close()
@@ -112,11 +136,25 @@ class Controlled:
 
     def send_data(self):
         while True:
-            data = socketMassages.send_screen()
             try:
-                self.send_to.sendall(data)
-            except socket.error as e:
-                print(f"Failed to send data - Error: {e}")
+                img = ImageGrab.grab()
+                s = img.size
+                simg = img.tobytes()
+                bimg=lzma.compress(simg)
+
+                sb = len(bimg)
+                #sb2 = bimg.__sizeof__()
+                #print(f'{sb}')
+
+                pack = struct.pack(f'{sb}s', bimg)
+                print(pack.__sizeof__())
+                print(pack.__len__())
+                sizeofpack=struct.calcsize(f'{sb}s')
+                print(sizeofpack)
+
+                self.send_to.sendall(sizeofpack.to_bytes(4,sys.byteorder)+pack)
+            except socket.error as err:
+                print(err)
                 self.send_to.close()
                 break
         return
