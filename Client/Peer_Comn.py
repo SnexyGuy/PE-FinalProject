@@ -1,13 +1,36 @@
+import pickletools
 import socket
 import threading
 import pickle
 import time
 import lzma
 import socketMassages
-from PIL import ImageGrab,Image
+from PIL import ImageGrab,Image,ImageTk
 import client_gui
 import sys
 import struct
+
+
+
+#function that ensures all data received ---> returns all data
+
+def recv_all(conn : socket.socket):
+    data=b''
+    pck_sz= conn.recv(8)
+    size=int.from_bytes(pck_sz,sys.byteorder)
+    while len(data)<size:
+        data=data+conn.recv(size-len(data))
+        if len(data)==size:
+            break
+    return data
+
+
+
+
+
+
+
+
 
 
 class Controlling:
@@ -58,33 +81,14 @@ class Controlling:
         return
     def receive_data(self, connection, address):
         while True:
-            pack_size_b = connection.recv(4)
-            pack_size = int.from_bytes(pack_size_b, sys.byteorder)
-            if not pack_size_b:
-                continue
-
-            pack=b''
-            while len(pack)<pack_size:
-                recvmsg=connection.recv(1024)
-                pack = pack+recvmsg
-                if not recvmsg:
-                    break
-
-
             try:
-                if len(pack)==pack_size:
-                    unpack = struct.unpack(f'{len(pack)}s', pack)
-                    limg=lzma.decompress(unpack[0])
-                    cimg = Image.frombytes('RGB', (1920, 1080), limg)
-                    #print(cimg.tobytes())
-                    self.window.receive_screen(cimg)
-                    #cimg.show()
-                    pack = b''
-                else:
-                    pack=b''
-                    pack_size_b=0
-                    pack_size=0
-                    continue
+                data=recv_all(connection)
+
+                img=pickle.loads(data)
+
+                self.window.receive_screen(img)
+
+
             except socket.error as err:
                 print(err)
                 connection.close()
@@ -136,22 +140,13 @@ class Controlled:
     def send_data(self):
         while True:
             try:
-                img = ImageGrab.grab()
-                s = img.size
-                simg = img.tobytes()
-                bimg=lzma.compress(simg)
+                screen_grab=ImageGrab.grab()
 
-                sb = len(bimg)
-                #sb2 = bimg.__sizeof__()
-                #print(f'{sb}')
+                data=pickle.dumps(screen_grab)
+                msg_length=len(data)
 
-                pack = struct.pack(f'{sb}s', bimg)
-                print(pack.__sizeof__())
-                print(pack.__len__())
-                sizeofpack=struct.calcsize(f'{sb}s')
-                print(sizeofpack)
+                self.send_to.sendall(msg_length.to_bytes(8,sys.byteorder)+data)
 
-                self.send_to.sendall(sizeofpack.to_bytes(4,sys.byteorder)+pack)
             except socket.error as err:
                 print(err)
                 self.send_to.close()
@@ -184,10 +179,10 @@ if __name__ == "__main__":
 
     ans=input('peer mode: ')
     if ans == 'cing':
-        c=Controlling('10.0.0.10',9999)
+        c=Controlling('10.0.0.9',9999)
         c.start()
     elif ans == 'cd':
-        cd=Controlled('10.0.0.10',9998)
+        cd=Controlled('10.0.0.9',9998)
         cd.start()
         time.sleep(1)
-        cd.connect('10.0.0.10',9999)
+        cd.connect('10.0.0.9',9999)
