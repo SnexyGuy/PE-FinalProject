@@ -17,7 +17,6 @@ class Controlling:
         self.socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.listen_to=None
         self.send_to=None
-        self.connected_to=None
         self.window=client_gui.gui()
 
     def connect(self,peer_host, peer_port):
@@ -45,7 +44,7 @@ class Controlling:
             print(f"Accepted connection from {address}")
 
 
-            threading.Thread(target=self.handle_client, args=(self.listen_to, address), daemon=True).start()
+            threading.Thread(target=self.receive_data, args=(self.listen_to, address), daemon=True).start()
 
     def send_data(self):
         while True:
@@ -57,7 +56,7 @@ class Controlling:
                 self.send_to.close()
                 break
         return
-    def handle_client(self,connection,address):
+    def receive_data(self, connection, address):
         while True:
             pack_size_b = connection.recv(4)
             pack_size = int.from_bytes(pack_size_b, sys.byteorder)
@@ -132,7 +131,7 @@ class Controlled:
             print(f"Accepted connection from {address}")
 
 
-            threading.Thread(target=self.handle_client, args=(self.listen_to, address), daemon=True).start()
+            threading.Thread(target=self.receive_data, args=(self.listen_to, address), daemon=True).start()
 
     def send_data(self):
         while True:
@@ -158,7 +157,7 @@ class Controlled:
                 self.send_to.close()
                 break
         return
-    def handle_client(self,connection,address):
+    def receive_data(self, connection, address):
         while True:
             try:
                 data=connection.recv(1024)

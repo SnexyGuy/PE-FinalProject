@@ -62,12 +62,12 @@ if __name__ == "__main__":
 class gui:
     def __init__(self):
         self.root=tk.Tk()
-        self.Controlling_client_frame=tk.Frame(self.root)
-        self.displayed_screen=tk.Canvas(self.Controlling_client_frame,bg='green')
-        self.screen_image=self.displayed_screen.create_image(self.displayed_screen.winfo_reqwidth()/2,self.displayed_screen.winfo_reqheight()/2,image=None, anchor='center')
-        self.displayed_screen.pack(fill='both', expand=True)
-        self.Controlling_client_frame.pack(fill='both',expand=True)
-        self.displayed_screen.bind('<Configure>', self.resize)
+        self.screen_frame=tk.Frame(self.root)
+        self.screen_canvas=tk.Canvas(self.screen_frame, bg='green')
+        self.screen_image=self.screen_canvas.create_image(self.screen_canvas.winfo_reqwidth() / 2, self.screen_canvas.winfo_reqheight() / 2, image=None, anchor='center')
+        self.screen_canvas.pack(fill='both', expand=True)
+        self.screen_frame.pack(fill='both', expand=True)
+        self.screen_canvas.bind('<Configure>', self.resize)
         self.received_screen : PIL.Image.Image = ImageGrab.grab()
 
     def resize(self, event : tk.Event):
@@ -95,17 +95,17 @@ class gui:
             display=img
             self.received_screen=img
 
-        display.thumbnail((self.displayed_screen.winfo_width(), self.displayed_screen.winfo_height()))
+        display.thumbnail((self.screen_canvas.winfo_width(), self.screen_canvas.winfo_height()))
 
         display_img = ImageTk.PhotoImage(display)
 
-        new_width = self.displayed_screen.winfo_width() - display_img.width()
-        new_height = self.displayed_screen.winfo_height() - display_img.height()
+        new_width = self.screen_canvas.winfo_width() - display_img.width()
+        new_height = self.screen_canvas.winfo_height() - display_img.height()
 
-        self.displayed_screen.itemconfigure(self.screen_image, image=display_img)
-        self.displayed_screen.moveto(self.screen_image, new_width / 2, new_height / 2)
+        self.screen_canvas.itemconfigure(self.screen_image, image=display_img)
+        self.screen_canvas.moveto(self.screen_image, new_width / 2, new_height / 2)
 
-        self.displayed_screen.image = display_img
+        self.screen_canvas.image = display_img
         self.root.update()
 
     def receive_screen(self,screen):

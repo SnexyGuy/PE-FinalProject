@@ -1,5 +1,5 @@
 from tkinter import *
-from PIL import ImageTk, Image
+from PIL import ImageTk, Image,ImageGrab
 import cv2
 from mss import mss
 import numpy as np
@@ -25,18 +25,19 @@ sct = mss()
 # function for video streaming
 def video_stream():
     while True:
-        sct_img = sct.grab(bounding_box)
-        scsh = np.array(sct_img)
+        sct_img = ImageGrab.grab()
+        #sct.grab(bounding_box)
+        #scsh = np.array(sct_img)
 
 
         #_, frame = cap.read()
-        cv2image = cv2.cvtColor(scsh, cv2.COLOR_BGR2RGBA)
+        #cv2image = cv2.cvtColor(scsh, cv2.COLOR_BGR2RGBA)
 
-        img = Image.fromarray(cv2image)
+        #img = Image.fromarray(cv2image)
 
-        img.thumbnail((1000, 1000))
+        sct_img.thumbnail((1000, 1000))
 
-        imgtk = ImageTk.PhotoImage(image=img)
+        imgtk = ImageTk.PhotoImage(image=sct_img)
         lmain.imgtk = imgtk
         lmain.configure(image=imgtk)
         lmain.update()
