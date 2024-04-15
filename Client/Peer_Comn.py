@@ -9,6 +9,7 @@ from PIL import ImageGrab,Image,ImageTk
 import client_gui
 import sys
 import struct
+import win32api
 
 
 
@@ -41,6 +42,7 @@ class Controlling:
         self.listen_to=None
         self.send_to=None
         self.window=client_gui.gui()
+        self.window.screen_canvas.bind('<key>',self.send_data)
 
     def connect(self,peer_host, peer_port):
         try:
@@ -48,8 +50,8 @@ class Controlling:
             self.send_to=connection
             print(f"Connected to {peer_host} : {peer_port}")
 
-            sending_thread=threading.Thread(target=self.send_data, daemon=True)
-            sending_thread.start()
+            #sending_thread=threading.Thread(target=self.send_data, daemon=True)
+            #sending_thread.start()
             return
         except socket.error as e:
             print(f"Failed to connect to {peer_host} : {peer_port} - Error: {e}")
@@ -67,18 +69,20 @@ class Controlling:
             print(f"Accepted connection from {address}")
 
 
+
             threading.Thread(target=self.receive_data, args=(self.listen_to, address), daemon=True).start()
 
-    def send_data(self):
-        while True:
-            data = input('send: ')
-            try:
-                self.send_to.sendall(data.encode())
-            except socket.error as e:
-                print(f"Failed to send data - Error: {e}")
-                self.send_to.close()
-                break
-        return
+    def send_data(self, event):
+        keyboard_keycode = event.keycode
+        keyboard_scancode = win32api.MapVirtualKey(keyboard_keycode, 4)
+
+        data = f'k~{keyboard_keycode}~{keyboard_scancode}'
+        #data = input('send: ')
+        try:
+            self.send_to.sendall(data.encode())
+        except socket.error as e:
+            print(f"Failed to send data - Error: {e}")
+            self.send_to.close()
     def receive_data(self, connection, address):
         while True:
             try:
@@ -135,6 +139,8 @@ class Controlled:
             print(f"Accepted connection from {address}")
 
 
+
+
             threading.Thread(target=self.receive_data, args=(self.listen_to, address), daemon=True).start()
 
     def send_data(self):
@@ -181,8 +187,10 @@ if __name__ == "__main__":
     if ans == 'cing':
         c=Controlling('10.0.0.9',9999)
         c.start()
+
     elif ans == 'cd':
         cd=Controlled('10.0.0.9',9998)
         cd.start()
         time.sleep(1)
         cd.connect('10.0.0.9',9999)
+

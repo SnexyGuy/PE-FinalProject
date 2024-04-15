@@ -5,7 +5,7 @@ import PIL.Image
 from PIL import ImageGrab, ImageTk, ImageOps, Image, ImageChops, ImageDraw
 import socket
 import threading
-
+import win32api
 
 
 '''
@@ -70,6 +70,7 @@ class gui:
         self.screen_canvas.bind('<Configure>', self.resize)
         self.received_screen : PIL.Image.Image = ImageGrab.grab()
 
+
     def resize(self, event : tk.Event):
         display= self.received_screen
 
@@ -84,7 +85,6 @@ class gui:
         event.widget.moveto(self.screen_image, new_width / 2, new_height / 2)
 
         event.widget.image = display_img
-        print(f'{event.width}x{event.height}')
         self.root.update()
 
     def update_screen(self,img):
@@ -110,6 +110,8 @@ class gui:
 
     def receive_screen(self,screen):
         self.update_screen(screen)
+
+
 
     def start(self):
         self.root.mainloop()
