@@ -24,7 +24,7 @@ frame.pack()
 canvas.pack()
 print(f'{GetSystemMetrics(0)}x{GetSystemMetrics(1)}')
 canvas.focus_set()
-canvas.bind('<Key>', lambda event: print(f'vc: {event.keycode} sc: {MapVirtualKey(event.keycode,4)}'))
+canvas.bind('<Key>', lambda event: print(event))
 canvas.bind('<Button>', click)
 canvas.bind('<ButtonRelease>',click)
 

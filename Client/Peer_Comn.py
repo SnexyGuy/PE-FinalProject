@@ -10,6 +10,7 @@ import client_gui
 import sys
 import struct
 import win32api
+import pyautogui
 
 
 
@@ -42,7 +43,10 @@ class Controlling:
         self.listen_to=None
         self.send_to=None
         self.window=client_gui.gui()
+        self.window.screen_canvas.focus_set()
         self.window.screen_canvas.bind('<Key>', self.send_keyboard)
+        self.window.screen_canvas.bind('<Button>',self.send_mouse)
+        self.window.screen_canvas.bind('<ButtonRelease>',self.send_mouse)
 
     def connect(self,peer_host, peer_port):
         try:
@@ -71,6 +75,8 @@ class Controlling:
 
 
             threading.Thread(target=self.receive_data, args=(self.listen_to, address), daemon=True).start()
+            break
+        self.connect('10.0.0.9',9998)
 
     def send_keyboard(self, event):
         keyboard_keycode = event.keycode
@@ -86,8 +92,8 @@ class Controlling:
 
     def send_mouse(self,event):
         data=''
-        match event.type:
-            case 4: #mouse-down
+        match int(event.type):
+            case 4:  #mouse-down
                 data=f'm~d~{event.num}~{event.x}~{event.y}~{self.window.actual_screenShare_size[0]}~{self.window.actual_screenShare_size[1]}'
             case 5: #mouse-up
                 data=f'm~u~{event.num}~{event.x}~{event.y}~{self.window.actual_screenShare_size[0]}~{self.window.actual_screenShare_size[1]}'
@@ -119,6 +125,7 @@ class Controlling:
         self.window.start()
 
 
+
 class Controlled:
     def __init__(self, host, port):
         self.host=host
@@ -127,7 +134,8 @@ class Controlled:
         self.listen_to=None
         self.send_to=None
         self.connected_to=None
-
+        self.controlled_screen_width=win32api.GetSystemMetrics(0)
+        self.controlled_screen_height=win32api.GetSystemMetrics(1)
     def connect(self,peer_host, peer_port):
         try:
             connection=socket.create_connection((peer_host,peer_port))
@@ -175,10 +183,35 @@ class Controlled:
     def receive_data(self, connection, address):
         while True:
             try:
-                data=connection.recv(1024)
-                if not data:
-                    break
-                print(f"Received data from {address} : {data.decode()}")
+                recv_data=connection.recv(1024)
+                decoded_data=recv_data.decode()
+                data=decoded_data.split('~')
+                if data[0]=='k':
+                    keycode=int(data[1])
+                    scancode=int(data[2])
+                    win32api.keybd_event(keycode,scancode)
+                elif data[0]=='m':
+                    recv_x=int(data[3])
+                    recv_y=int(data[4])
+                    retio_x=self.controlled_screen_width/int(data[5])
+                    ratio_y=self.controlled_screen_height/int(data[6])
+
+                    x=round(recv_x*retio_x)
+                    y=round(recv_y*ratio_y)
+
+                    if data[1]=='d':
+                        match int(data[2]):
+                            case 1:
+                                pyautogui.mouseDown(button='left',x=x,y=y)#left
+                            case 3:
+                                pyautogui.mouseDown(button='right',x=x,y=y)#right
+                    elif data[1]=='u':
+                        match int(data[2]):
+                            case 1:
+                                pyautogui.mouseUp(button='left',x=x,y=y)#left
+                            case 3:
+                                pyautogui.mouseUp(button='right',x=x,y=y)#right
+
             except socket.error:
                 break
         print(f"Connection from {address} closed")
