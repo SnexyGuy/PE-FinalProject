@@ -42,7 +42,7 @@ class Controlling:
         self.listen_to=None
         self.send_to=None
         self.window=client_gui.gui()
-        self.window.screen_canvas.bind('<key>',self.send_data)
+        self.window.screen_canvas.bind('<Key>', self.send_keyboard)
 
     def connect(self,peer_host, peer_port):
         try:
@@ -72,7 +72,7 @@ class Controlling:
 
             threading.Thread(target=self.receive_data, args=(self.listen_to, address), daemon=True).start()
 
-    def send_data(self, event):
+    def send_keyboard(self, event):
         keyboard_keycode = event.keycode
         keyboard_scancode = win32api.MapVirtualKey(keyboard_keycode, 4)
 
@@ -83,6 +83,20 @@ class Controlling:
         except socket.error as e:
             print(f"Failed to send data - Error: {e}")
             self.send_to.close()
+
+    def send_mouse(self,event):
+        data=''
+        match event.type:
+            case 4: #mouse-down
+                data=f'm~d~{event.num}~{event.x}~{event.y}~{self.window.actual_screenShare_size[0]}~{self.window.actual_screenShare_size[1]}'
+            case 5: #mouse-up
+                data=f'm~u~{event.num}~{event.x}~{event.y}~{self.window.actual_screenShare_size[0]}~{self.window.actual_screenShare_size[1]}'
+        try:
+            self.send_to.sendall(data.encode())
+        except socket.error as e:
+            print(f"Failed to send data - Error: {e}")
+            self.send_to.close()
+
     def receive_data(self, connection, address):
         while True:
             try:

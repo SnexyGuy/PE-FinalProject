@@ -78,6 +78,8 @@ class gui:
 
         display_img = ImageTk.PhotoImage(display)
 
+        self.actual_screenShare_size=(display_img.width(),display_img.height())
+
         new_width = event.width - display_img.width()
         new_height = event.height - display_img.height()
 
@@ -86,6 +88,7 @@ class gui:
 
         event.widget.image = display_img
         self.root.update()
+
 
     def update_screen(self,img):
 

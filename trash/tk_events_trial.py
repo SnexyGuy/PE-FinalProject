@@ -14,7 +14,7 @@ w_r=65535/500
 h_r=65535/500
 #hwnd = MonitorFromPoint((0,0), MONITOR_DEFAULTTOPRIMARY)
 def click(event):
-    print(event)
+    print(f'{event}----{event.num}')
 
 root=Tk()
 
@@ -26,5 +26,6 @@ print(f'{GetSystemMetrics(0)}x{GetSystemMetrics(1)}')
 canvas.focus_set()
 canvas.bind('<Key>', lambda event: print(f'vc: {event.keycode} sc: {MapVirtualKey(event.keycode,4)}'))
 canvas.bind('<Button>', click)
+canvas.bind('<ButtonRelease>',click)
 
 root.mainloop()
