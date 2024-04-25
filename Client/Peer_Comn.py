@@ -11,7 +11,9 @@ import sys
 import struct
 import win32api
 import pyautogui
+import lz4.frame
 
+pyautogui.FAILSAFE=False
 
 
 #function that ensures all data received ---> returns all data
@@ -25,7 +27,6 @@ def recv_all(conn : socket.socket):
         if len(data)==size:
             break
     return data
-
 
 
 
@@ -108,7 +109,9 @@ class Controlling:
             try:
                 data=recv_all(connection)
 
-                img=pickle.loads(data)
+                decompressed_data=lz4.frame.decompress(data)
+
+                img=pickle.loads(decompressed_data)
 
                 self.window.receive_screen(img)
 
@@ -171,9 +174,10 @@ class Controlled:
                 screen_grab=ImageGrab.grab()
 
                 data=pickle.dumps(screen_grab)
-                msg_length=len(data)
+                compressed_data=lz4.frame.compress(data)
+                msg_length=len(compressed_data)
 
-                self.send_to.sendall(msg_length.to_bytes(8,sys.byteorder)+data)
+                self.send_to.sendall(msg_length.to_bytes(8,sys.byteorder)+compressed_data)
 
             except socket.error as err:
                 print(err)
