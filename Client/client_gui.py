@@ -123,6 +123,7 @@ class gui:
 
 
 
+
 '''
 if __name__ == "__main__":
     host, port = input('enter host:port for new peer -> ').split(':')
