@@ -42,6 +42,12 @@ def end_all_threads():
 def delete_all_thread_flags():
     thread_event_array.clear()
 
+def check_thread_flag(thread_id):
+    if thread_id in thread_event_array and thread_event_array[thread_id].is_set():
+        return True
+    else:
+        return False
+
 #----------------------------------------------------------
 
 
@@ -88,7 +94,7 @@ class Controlling:
 
         while True:
 
-            if threading.get_ident() in thread_event_array and thread_event_array[threading.get_ident()].is_set():
+            if check_thread_flag(threading.get_ident()):
                 self.socket.close()
                 thread_event_remove(threading.get_ident())
                 break
@@ -139,7 +145,8 @@ class Controlling:
 
     def receive_data(self, connection, address):
         while True:
-            if thread_event_array[threading.get_ident()].is_set():
+            if check_thread_flag(threading.get_ident()):
+                connection.close()
                 break
 
             try:
@@ -165,7 +172,7 @@ class Controlling:
         self.window.start()
 
 
-
+#need to apply thread closing handling to the Controled Class!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 class Controlled:
     def __init__(self, host, port):
         self.host=host
