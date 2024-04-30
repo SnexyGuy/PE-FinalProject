@@ -63,8 +63,17 @@ class gui:
     def __init__(self):
         self.root=tk.Tk()
         #------------------------------------------------------------
+        self.connect_frame=tk.Frame(self.root)
+        self.connect_frame.pack()
+
+        self.connect_label=tk.Label(self.connect_frame,text='Connected To: None')
+        self.connect_label.pack()
+
+        self.connect_button = tk.Button(self.connect_frame, text="Connect", command=self.connect_to_welcome)
+        self.connect_button.pack()
+        #-------------------------------------------------------------
         self.welcome_frame=tk.Frame(self.root)
-        self.welcome_frame.pack(fill='both', expand=True)
+        self.welcome_frame.forget()
 
         self.choice_reg_button = tk.Button(self.welcome_frame, text="register", command=self.welcome_to_register_frame)
         self.choice_reg_button.pack()
@@ -113,9 +122,22 @@ class gui:
 
         self.login_to_register_button = tk.Button(self.login_frame, text="ToRegister", command=self.login_to_register_frame)
         self.login_to_register_button.pack()
+        #-----------------------------------------------------------
+        self.rooms_frame=tk.Frame(self.root)
+        self.rooms_frame.forget()
 
-        self.tt_button = tk.Button(self.login_frame, text="toscreen", command=self.login_to_screen_share)
-        self.tt_button.pack()
+        self.enter_room_label = tk.Label(self.rooms_frame, text="enter room password:")
+        self.enter_room_label.pack()
+
+        self.enter_room_entry = tk.Entry(self.rooms_frame)
+        self.enter_room_entry.pack()
+
+        #self.enter_room_button = tk.Button(self.rooms_frame, text="enter room", command=self.enter_room)
+        #self.enter_room_button.pack()
+
+        #self.create_room_button = tk.Button(self.rooms_frame, text="create room", command=self.create_room)
+        #self.create_room_button.pack()
+
         #-----------------------------------------------------------
         self.screen_frame=tk.Frame(self.root)
         self.screen_canvas=tk.Canvas(self.screen_frame, bg='green')
@@ -148,6 +170,14 @@ class gui:
         self.screen_frame.pack(fill='both', expand=True)
         self.login_frame.forget()
 
+    def connect_to_welcome(self):
+        self.welcome_frame.pack()
+        self.connect_frame.forget()
+
+    def login_to_rooms_frame(self):
+        self.rooms_frame.pack()
+        self.login_frame.forget()
+
 
 
     def register(self):
@@ -159,7 +189,10 @@ class gui:
 
         # You can add your own validation logic here
         if userid == "admin" and password == "password":
-            messagebox.showinfo("Login Successful", "Welcome, Admin!")
+            answer=messagebox.askquestion('login success','login successful',type=messagebox.OK)
+            if answer==messagebox.OK:
+                self.login_to_rooms_frame()
+
         else:
             messagebox.showerror("Login Failed", "Invalid username or password")
 
@@ -185,8 +218,6 @@ class gui:
 
         event.widget.image = display_img
         self.root.update()
-
-
     def update_screen(self,img):
 
         if img is None:
@@ -207,15 +238,10 @@ class gui:
 
         self.screen_canvas.image = display_img
         self.root.update()
-
     def receive_screen(self,screen):
         self.update_screen(screen)
-
-
-
     def start(self):
         self.root.mainloop()
-
 
 g=gui()
 g.start()
