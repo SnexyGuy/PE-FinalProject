@@ -132,11 +132,17 @@ class gui:
         self.enter_room_entry = tk.Entry(self.rooms_frame)
         self.enter_room_entry.pack()
 
-        #self.enter_room_button = tk.Button(self.rooms_frame, text="enter room", command=self.enter_room)
-        #self.enter_room_button.pack()
+        self.enter_room_button = tk.Button(self.rooms_frame, text="enter room")
+        self.enter_room_button.pack()
 
-        #self.create_room_button = tk.Button(self.rooms_frame, text="create room", command=self.create_room)
-        #self.create_room_button.pack()
+        self.create_room_label = tk.Label(self.rooms_frame, text="")
+        self.create_room_label.forget()
+        def func():
+            self.create_room_label.configure(text='code: abcd')
+            self.create_room_label.pack()
+
+        self.create_room_button = tk.Button(self.rooms_frame, text="create room" , command=func)
+        self.create_room_button.pack()
 
         #-----------------------------------------------------------
         self.screen_frame=tk.Frame(self.root)

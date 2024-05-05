@@ -3,21 +3,22 @@ import sqlite3
 
 class DataBaseHandler():
     def __init__(self):
-        self.connection=sqlite3.connect('rdp_db.db')
-        self.connection.execute("""
+        self.connection=sqlite3.connect('rdp_db.sql')
+        self.connection.executescript("""
+        \
             CREATE TABLE IF NOT EXISTS usersdata (
                 id INTEGER PRIMARY KEY,
                 username VARCHAR(255) NOT NULL,
                 password VARCHAR(255) NOT NULL
-            )
-            
+            );
+            \
             CREATE TABLE IF NOT EXISTS open_rooms (
                 id INTEGER PRIMARY KEY,
-                creator_address VARCHAR(255) NOT NULL
-                creator_port INTEGER NOT NULL
-                creator_type VARCHAR(255) NOT NULL
+                creator_address VARCHAR(255) NOT NULL,
+                creator_port INTEGER NOT NULL,
+                creator_type VARCHAR(255) NOT NULL,
                 password VARCHAR(255) NOT NULL
-            )
+            );
             """)
         self.connection.commit()
 
@@ -29,8 +30,8 @@ class DataBaseHandler():
                 return 'w'
             else:
                 return 'noexist'
-        except sqlite3.Error:
-            return 'f'
+        except sqlite3.Error as err:
+            return 'f' + f' {err}'
 
         pass
     def register(self,username,hashed_password):
@@ -40,11 +41,11 @@ class DataBaseHandler():
             if fetched == 1:
                 return 'exist'
             else:
-                self.connection.execute("INSERT INTO usersdata (username,password) \ VALUES (?,?)",(username,hashed_password))
+                self.connection.execute("INSERT INTO usersdata (username,password) VALUES (?,?)",(username,hashed_password))
                 self.connection.commit()
                 return 'w'
-        except sqlite3.Error:
-            return 'f'
+        except sqlite3.Error as err:
+            return 'f' + f' {err}'
 
     def delete_user(self,username):
         try:
@@ -56,21 +57,26 @@ class DataBaseHandler():
                 return 'w'
             else:
                 return 'noexist'
-        except sqlite3.Error:
-            return 'f'
+        except sqlite3.Error as err:
+            return 'f' + f' {err}'
 
 
-    def create_room(self,address,port,type,password):
+    def create_room(self,address,port,type,code):
         try:
-            response = self.connection.execute("SELECT EXISTS(SELECT 1 FROM open_rooms WHERE creator_address = ? AND creator_port = ? AND creator_type = ? AND password = ? )", (address, port, type, password))
-            fetched = response.fetchone()[0]
-            if fetched == 1:
-                return 'exist'
+            code_response=self.connection.execute("SELECT EXISTS(SELECT * FROM open_rooms WHERE password = ? )", (code,))
+            code_fetched=code_response.fetchone()[0]
+            if code_fetched == 1:
+                return 'code-exists'
             else:
-                self.connection.execute("INSERT INTO open_rooms (creator_address,creator_port,creator_type,password) \ VALUES (?,?)",(address, port,type,password))
-                self.connection.commit()
-                return 'w'
-        except sqlite3.Error:
+                response = self.connection.execute("SELECT EXISTS(SELECT 1 FROM open_rooms WHERE creator_address = ? AND creator_port = ? AND creator_type = ? AND password = ? )", (address, port, type, code))
+                fetched = response.fetchone()[0]
+                if fetched == 1:
+                    return 'exist'
+                else:
+                    self.connection.execute("INSERT INTO open_rooms (creator_address,creator_port,creator_type,password) VALUES (?,?,?,?)",(address, port,type,code))
+                    self.connection.commit()
+                    return 'w'
+        except sqlite3.Error as err:
             return 'f'
     def end_room(self,address,port,type,password):
         try:
@@ -82,7 +88,7 @@ class DataBaseHandler():
                 return 'w'
             else:
                 return 'noexist'
-        except sqlite3.Error:
+        except sqlite3.Error as err:
             return 'f'
 
     def enter_room(self,password):
@@ -92,9 +98,9 @@ class DataBaseHandler():
             if fetched == 1: #exists
                 room_data=self.connection.execute("SELECT * FROM open_rooms WHERE password = ?;", (password,))
                 fetched_data=room_data.fetchall()
-                address=fetched_data[1]
-                port=fetched_data[2]
-                peer_type=fetched_data[3]
+                address=fetched_data[0][1]
+                port=fetched_data[0][2]
+                peer_type=fetched_data[0][3]
                 status=self.end_room(address,port,peer_type,password)
                 if status == 'w':
                     return (address,port,peer_type)
@@ -102,5 +108,15 @@ class DataBaseHandler():
                     return 'noendroom'
             else:
                 return 'noexist'
+        except sqlite3.Error as err:
+            return 'f' + f' {err}'
+
+    def close_db(self):
+        try:
+            self.connection.close()
+            return 'w'
         except sqlite3.Error:
             return 'f'
+
+
+

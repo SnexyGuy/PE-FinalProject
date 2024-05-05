@@ -89,11 +89,14 @@ class gui:
         self.enter_room_entry = tk.Entry(self.rooms_frame)
         self.enter_room_entry.pack()
 
-        #self.enter_room_button = tk.Button(self.rooms_frame, text="enter room", command=self.enter_room)
-        #self.enter_room_button.pack()
+        self.enter_room_button = tk.Button(self.rooms_frame, text="enter room", command=self.enter_room)
+        self.enter_room_button.pack()
 
-        #self.create_room_button = tk.Button(self.rooms_frame, text="create room", command=self.create_room)
-        #self.create_room_button.pack()
+        self.create_room_label = tk.Label(self.rooms_frame, text="")
+        self.create_room_label.pack()
+
+        self.create_room_button = tk.Button(self.rooms_frame, text="create room", command=self.create_room)
+        self.create_room_button.pack()
 
         #-----------------------------------------------------------
         self.screen_frame=tk.Frame(self.root)
@@ -241,10 +244,17 @@ class unknown_client:
             self.server = connection
             print(f"Connected to {server_address} : {server_port}")
 
-            receive_from_server_thread=threading.Thread(target=self.receive_from_server)
-            receive_from_server_thread.start()
+            confirmation=recv_all(self.server).decode()
 
-            return 'w'
+            if confirmation == 'continue':
+                receive_from_server_thread=threading.Thread(target=self.receive_from_server)
+                receive_from_server_thread.start()
+                self.window.connect_to_welcome()
+                return 'w'
+            else:
+                self.server.close()
+                return 'noconfirm'
+
         except socket.error as err:
             ans = messagebox.showerror('failed connection to server', f'{err}\n want to try again?',type=messagebox.RETRYCANCEL)
             if ans == messagebox.RETRY:
@@ -255,9 +265,11 @@ class unknown_client:
     def handling_login(self):
         username = self.window.login_username_entry.get()
         password = self.window.login_password_entry.get()
-        data = f'l~{username}~{password}'
+        data_list=['l',username,password]
+        data = pickle.dumps(data_list)
+        msg_size = len(data)
         try:
-            self.server.sendall(data.encode())
+            self.server.sendall(msg_size.to_bytes(8,sys.byteorder)+data)
         except socket.error as error:
             self.server.close()
             messagebox.showerror('failed communication with server', f'{error}')
@@ -265,9 +277,28 @@ class unknown_client:
     def handling_register(self):
         username = self.window.register_username_entry.get()
         password = self.window.register_password_entry.get()
-        data = f'r~{username}~{password}'
+        data_list = ['r', username, password]
+        data = pickle.dumps(data_list)
+        msg_size = len(data)
         try:
-            self.server.sendall(data.encode())
+            self.server.sendall(msg_size.to_bytes(8,sys.byteorder)+data)
+        except socket.error as error:
+            self.server.close()
+            messagebox.showerror('failed communication with server', f'{error}')
+
+    def handling_room_creation(self):
+        client_type=''
+        ans=messagebox.askquestion('type of client','Controlling (YES) OR Controlled? (NO)')
+        if ans == messagebox.YES:
+            client_type='Controlling'
+        elif ans == messagebox.NO:
+            client_type='Controlled'
+
+        try:
+            msg_list=['rooms','create-room',client_type]
+            msg=pickle.dumps(msg_list)
+            msg_len=len(msg)
+            self.server.sendall(msg_len.to_bytes(8,sys.byteorder))
         except socket.error as error:
             self.server.close()
             messagebox.showerror('failed communication with server', f'{error}')
@@ -276,13 +307,46 @@ class unknown_client:
         while True:
             try:
                 received=recv_all(self.server)
-
                 answer=received.decode()
+
+                if answer == 'registration-w':
+                    self.window.register_to_login_frame()
+                elif answer == 'registration-f':
+                    ans = messagebox.showerror('failed registration', 'want to try again?',type=messagebox.RETRYCANCEL)
+                    if ans == messagebox.CANCEL:
+                        self.end()
+                elif answer == 'registration-to-login':
+                    ans=messagebox.showinfo('user already exists','ok-login,cancel-stay in register',type=messagebox.OKCANCEL)
+                    if ans == messagebox.OK:
+                        self.window.register_to_login_frame()
+
+                if answer == 'login-w':
+                    self.window.login_to_rooms_frame()
+                elif answer == 'login-f':
+                    ans = messagebox.showerror('failed login', 'want to try again?',type=messagebox.RETRYCANCEL)
+                    if ans == messagebox.CANCEL:
+                        self.end()
+                elif answer == 'login-to-register':
+                    ans=messagebox.showinfo('user doesnt exist','ok-register,cancel-stay in login',type=messagebox.OKCANCEL)
+                    if ans == messagebox.OK:
+                        self.window.login_to_register_frame()
+
+
+                if answer == 'room-exists':
+                    pass
+                elif answer == 'room-created':
+                    pass
+                elif answer == 'room-creation-failed':
+                    pass
+
 
             except socket.error as error:
                 self.server.close()
                 messagebox.showerror('failed communication with server', f'{error}')
                 break
+    def end(self):
+        self.server.close()
+        self.window.root.destroy()
 
 
 
