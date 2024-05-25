@@ -8,6 +8,37 @@ import secrets
 
 
 
+#functions to handle closing and activating threads
+
+
+thread_event_array : dict[threading.Thread.ident,threading.Event] = {}
+
+
+def thread_event_setter(thread_id : threading.Thread.ident):
+    thread_event_array.update({thread_id : threading.Event()})
+
+def thread_event_remove(thread_id: threading.Thread.ident):
+    thread_event_array.pop(thread_id)
+def thread_closer(thread_id : threading.Thread.ident):
+    thread_event_array[thread_id].set()
+def end_all_threads():
+    for thread in thread_event_array:
+        thread_event_array[thread].set()
+
+def delete_all_thread_flags():
+    thread_event_array.clear()
+
+def check_thread_flag(thread_id):
+    if thread_id in thread_event_array and thread_event_array[thread_id].is_set():
+        return True
+    else:
+        return False
+
+
+
+
+
+
 #function that generates new room passwords
 
 def generate_room_code(db : sqlite3.Connection):
@@ -162,14 +193,14 @@ class DataBaseHandler():
 
 
 class Server:
-    def __init__(self, host, port):
+    def __init__(self, host):
         self.host=host
-        self.port=port
         self.socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connections=[]
+        self.connections : dict [tuple[str,int],socket.socket] = {}
         self.db=DataBaseHandler()
     def listen(self):
-        self.socket.bind((self.host, self.port))
+        self.socket.bind((self.host,9999))
+        self.port=self.socket.getsockname()[1]
         self.socket.listen(10)
         print(f"Listening for connections on {self.host} : {self.port}")
 
@@ -181,18 +212,18 @@ class Server:
 
             connection.sendall(msg_size.to_bytes(8,sys.byteorder)+conn_confirm)
 
-            self.connections.append(connection)
+            self.connections.update({address : connection})
             print(f"Accepted connection from {address}")
-            threading.Thread(target=self.handle_client, args=(connection, address)).start()
-    def send_data(self,data):
-        for connection in self.connections:
-            try:
-                connection.sendall(data.encode())
-            except socket.error as e:
-                print(f"Failed to send data - Error: {e}")
-                self.connections.remove(connection)
+            client_thread=threading.Thread(target=self.handle_client, args=(connection, address))
+            client_thread.start()
+            thread_event_setter(client_thread.ident)
     def handle_client(self,connection : socket.socket,address):
         while True:
+            if check_thread_flag(threading.get_ident()):
+                connection.close()
+                thread_event_remove(threading.get_ident())
+                break
+
             try:
                 recv_data=recv_all(connection)
                 data=pickle.loads(recv_data)
@@ -201,15 +232,18 @@ class Server:
                         hashed_pwd=hashlib.sha256(data[2]).hexdigest()
                         ans=self.db.register(data[1],hashed_pwd)
                         if ans == 'w':
-                            msg='registration-w'.encode()
+                            msg_list=['registration-w']
+                            msg=pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
                         elif ans == 'f':
-                            msg = 'registration-f'.encode()
+                            msg_list = ['registration-f']
+                            msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
                         elif ans == 'exist':
-                            msg = 'registration-to-login'.encode()
+                            msg_list = ['registration-to-login']
+                            msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
 
@@ -217,15 +251,18 @@ class Server:
                         hashed_pwd=hashlib.sha256(data[2]).hexdigest()
                         ans=self.db.login_check(data[1],hashed_pwd)
                         if ans == 'w':
-                            msg='login-w'.encode()
+                            msg_list=['login-w']
+                            msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
                         elif ans == 'f':
-                            msg='login-f'.encode()
+                            msg_list=['login-f']
+                            msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
                         elif ans == 'noexist':
-                            msg='login-to-register'.encode()
+                            msg_list=['login-to-register']
+                            msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
                 elif data[0] == 'rooms':
@@ -234,25 +271,77 @@ class Server:
                         code=generate_room_code(self.db.connection)
                         ans=self.db.create_room(address,port,data[2],code)
                         if ans == 'exist':
-                            msg='room-exists'.encode()
+                            msg_list=['room-exists']
+                            msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
                         elif ans == 'w':
-                            msg='room-created'.encode()
+                            msg_list=['room-created',code,data[2]]
+                            msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
                         elif ans == 'f':
-                            msg='room-creation-failed'.encode()
+                            msg_list=['room-creation-failed']
+                            msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                    elif data[1] == 'connect-to-room':
+                        ans=self.db.enter_room(data[2],data[3])
+                        if ans == 'err-same-type':
+                            msg_list=['same-type-error', data[2]]
+                            msg = pickle.dumps(msg_list)
+                            msg_len=len(msg)
+                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                        elif ans == 'noendroom':
+                            msg_list=['room-closing-failed']
+                            msg = pickle.dumps(msg_list)
+                            msg_len=len(msg)
+                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                        elif ans == 'noexist':
+                            msg_list=['connect-to-nonexistent-room']
+                            msg = pickle.dumps(msg_list)
+                            msg_len=len(msg)
+                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                        elif ans == 'f':
+                            msg_list=['connecting-to-room-failed']
+                            msg = pickle.dumps(msg_list)
+                            msg_len=len(msg)
+                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                        else:
+                            msg_list=[ans[0],ans[1],ans[2]]
+                            msg = pickle.dumps(msg_list)
+                            msg_len=len(msg)
+                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                elif data[0] == 'peers':
+                    if data[1] == 'ready-for-connection':
+                        address = connection.getpeername()
+                        peer_sock=self.find_connection(address)
 
-
-
+                        msg_list=['ready-to-connect', data[2], address[0], address[1]]
+                        msg=pickle.dumps(msg_list)
+                        msg_len=len(msg)
+                        peer_sock.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
             except socket.error:
                 break
         print(f"Connection from {address} closed")
-        self.connections.remove(connection)
+        self.connections.pop(address)
         connection.close()
+
+    def find_connection(self, address : tuple[str,int]):
+        for conn_addr in self.connections:
+            if conn_addr == address:
+                return self.connections[conn_addr]
+
     def start(self):
         listen_thread=threading.Thread(target=self.listen)
         listen_thread.start()
+
+
+
+
+
+
+
+address=socket.gethostbyname(socket.gethostname())
+server=Server(address)
+server.start()

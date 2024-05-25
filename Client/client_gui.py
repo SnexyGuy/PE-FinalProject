@@ -1,64 +1,10 @@
-import time
 import tkinter as tk
-from tkinter import messagebox
-import PIL.Image
-from PIL import ImageGrab, ImageTk, ImageOps, Image, ImageChops, ImageDraw
-import socket
-import threading
-import win32api
-
-
-'''
-def resize(event):
-
-    display = ImageGrab.grab()
-
-    display.thumbnail((event.width,event.height))
-
-    display_img=ImageTk.PhotoImage(display)
-
-    new_width=event.width-display_img.width()
-    new_height=event.height-display_img.height()
-
-    event.widget.itemconfigure(screen_image,image=display_img)
-    event.widget.moveto(screen_image, new_width/2, new_height/2)
-
-    event.widget.image=display_img
-    print(f'{event.width}x{event.height}')
+from PIL import ImageGrab, ImageTk, Image
 
 
 
 
-if __name__ == "__main__":
 
-
-    root=tk.Tk()
-
-
-    Controlling_client_frame=tk.Frame(root)
-    
-    global display
-    display = ImageGrab.grab()
-    global display_img
-    display_img=ImageTk.PhotoImage(display)
-
-
-    displayed_screen=tk.Canvas(Controlling_client_frame,bg='green')
-    
-    displayed_screen.update()
-    
-    screen_image=displayed_screen.create_image(displayed_screen.winfo_reqwidth()/2,displayed_screen.winfo_reqheight()/2,image=display_img, anchor='center')
-    displayed_screen.image=display_img
-
-    displayed_screen.pack(fill='both', expand=True)
-    Controlling_client_frame.pack(fill='both',expand=True)
-
-
-    displayed_screen.bind('<Configure>',resize)
-    root.mainloop()
-'''
-
-'''------------------------------------------------------------------------'''
 class gui:
     def __init__(self):
         self.root=tk.Tk()
@@ -69,7 +15,7 @@ class gui:
         self.connect_label=tk.Label(self.connect_frame,text='Connected To: None')
         self.connect_label.pack()
 
-        self.connect_button = tk.Button(self.connect_frame, text="Connect", command=self.connect_to_welcome)
+        self.connect_button = tk.Button(self.connect_frame, text="Connect")
         self.connect_button.pack()
         #-------------------------------------------------------------
         self.welcome_frame=tk.Frame(self.root)
@@ -96,7 +42,7 @@ class gui:
         self.register_password_entry = tk.Entry(self.register_frame, show="*")  # Show asterisks for password
         self.register_password_entry.pack()
 
-        self.register_button = tk.Button(self.register_frame, text="Register", command=self.register)
+        self.register_button = tk.Button(self.register_frame, text="Register")
         self.register_button.pack()
 
         self.register_to_login_button = tk.Button(self.register_frame, text="ToLogin", command=self.register_to_login_frame)
@@ -117,32 +63,49 @@ class gui:
         self.login_password_entry = tk.Entry(self.login_frame, show="*")  # Show asterisks for password
         self.login_password_entry.pack()
 
-        self.login_button = tk.Button(self.login_frame, text="Login", command=self.login)
+        self.login_button = tk.Button(self.login_frame, text="Login")
         self.login_button.pack()
 
         self.login_to_register_button = tk.Button(self.login_frame, text="ToRegister", command=self.login_to_register_frame)
         self.login_to_register_button.pack()
         #-----------------------------------------------------------
-        self.rooms_frame=tk.Frame(self.root)
-        self.rooms_frame.forget()
+        self.connect_room_frame=tk.Frame(self.root)
+        self.connect_room_frame.forget()
 
-        self.enter_room_label = tk.Label(self.rooms_frame, text="enter room password:")
+        self.enter_room_label = tk.Label(self.connect_room_frame, text="enter room code:")
         self.enter_room_label.pack()
 
-        self.enter_room_entry = tk.Entry(self.rooms_frame)
+        self.enter_room_entry = tk.Entry(self.connect_room_frame)
         self.enter_room_entry.pack()
 
-        self.enter_room_button = tk.Button(self.rooms_frame, text="enter room")
+        self.enter_room_button = tk.Button(self.connect_room_frame, text="enter room")
         self.enter_room_button.pack()
 
-        self.create_room_label = tk.Label(self.rooms_frame, text="")
-        self.create_room_label.forget()
-        def func():
-            self.create_room_label.configure(text='code: abcd')
-            self.create_room_label.pack()
+        self.connect_to_create_button=tk.Button(self.connect_room_frame,text='to room connection',command=self.roomConn_to_roomCreate)
+        self.connect_to_create_button.pack()
 
-        self.create_room_button = tk.Button(self.rooms_frame, text="create room" , command=func)
+        #-----------------------------------------------------------------------------------------
+        self.create_room_frame=tk.Frame(self.root)
+        self.create_room_frame.forget()
+
+        self.create_room_label = tk.Label(self.create_room_frame, text="")
+        self.create_room_label.pack()
+
+        self.create_room_button = tk.Button(self.create_room_frame, text="create room")
         self.create_room_button.pack()
+
+        self.create_to_connect_button=tk.Button(self.create_room_frame,text='to room connection',command=self.roomCreate_to_roomConn)
+        self.create_to_connect_button.pack()
+
+        #--------------------------------------------------------------------------------
+        self.waiting_frame=tk.Frame(self.root)
+        self.waiting_frame.forget()
+
+        self.waiting_label = tk.Label(self.waiting_frame, text="waiting for your friend to enter")
+        self.waiting_label.pack()
+
+        self.code_label = tk.Label(self.waiting_frame, text=" ")
+        self.code_label.pack()
 
         #-----------------------------------------------------------
         self.screen_frame=tk.Frame(self.root)
@@ -153,7 +116,7 @@ class gui:
 
         self.screen_canvas.pack(fill='both', expand=True)
         self.screen_canvas.bind('<Configure>', self.screen_frame_resize)
-        self.received_screen : PIL.Image.Image = ImageGrab.grab()
+        self.received_screen : Image.Image = ImageGrab.grab()
 
 
     def welcome_to_register_frame(self):
@@ -181,32 +144,26 @@ class gui:
         self.connect_frame.forget()
 
     def login_to_rooms_frame(self):
-        self.rooms_frame.pack()
+        self.connect_room_frame.pack()
         self.login_frame.forget()
 
+    def create_to_waiting(self):
+        self.waiting_frame.pack()
+        self.create_room_frame.forget()
+
+    def roomCreate_to_roomConn(self):
+        self.connect_room_frame.pack()
+        self.create_room_frame.forget()
+
+    def roomConn_to_roomCreate(self):
+        self.create_room_frame.pack()
+        self.connect_room_frame.forget()
+
+    def show_room_code(self,code):
+        self.code_label.configure(text=f'room code:\n{code}')
 
 
-    def register(self):
-        pass
-
-    def login(self):
-        userid = self.login_username_entry.get()
-        password = self.login_password_entry.get()
-
-        # You can add your own validation logic here
-        if userid == "admin" and password == "password":
-            answer=messagebox.askquestion('login success','login successful',type=messagebox.OK)
-            if answer==messagebox.OK:
-                self.login_to_rooms_frame()
-
-        else:
-            messagebox.showerror("Login Failed", "Invalid username or password")
-
-
-
-
-
-
+    #screen share handling------------------------------------------
     def screen_frame_resize(self, event : tk.Event):
         display= self.received_screen
 
@@ -248,22 +205,3 @@ class gui:
         self.update_screen(screen)
     def start(self):
         self.root.mainloop()
-
-g=gui()
-g.start()
-
-'''
-if __name__ == "__main__":
-    host, port = input('enter host:port for new peer -> ').split(':')
-    node = Controlled(host, int(port))
-    node.start()
-
-    # Give some time for nodes to start listening
-    import time
-    time.sleep(2)
-
-    con_host, con_port = input('enter host:port to connect to -> ').split(':')
-    node.connect(con_host, int(con_port))
-    time.sleep(1)  # Allow connection to establish
-    node.send_data("Hello from node!")
-'''
