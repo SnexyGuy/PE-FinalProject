@@ -21,7 +21,7 @@ class unknown_client:
         try:
             connection = socket.create_connection((self.server_address,self.server_port))
             self.server = connection
-            print(f"Connected to {self.server.getsockname()[0]} : {self.server.getsockname()[1]}")
+            print(f"Connected to {self.server.getpeername()[0]} : {self.server.getpeername()[1]}")
 
             confirmation=recv_all(self.server).decode()
 
@@ -44,7 +44,7 @@ class unknown_client:
     def handling_login(self):
         username = self.window.login_username_entry.get()
         password = self.window.login_password_entry.get()
-        data_list=['l',username,password]
+        data_list=['l',username,password.encode()]
         data = pickle.dumps(data_list)
         msg_size = len(data)
         try:
@@ -77,11 +77,10 @@ class unknown_client:
             msg_list=['rooms','create-room',client_type]
             msg=pickle.dumps(msg_list)
             msg_len=len(msg)
-            self.server.sendall(msg_len.to_bytes(8,sys.byteorder))
+            self.server.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
         except socket.error as error:
             self.server.close()
             messagebox.showerror('failed communication with server', f'{error}')
-
 
     def handling_connecting_to_room(self):
         code=self.window.enter_room_entry.get()
@@ -113,7 +112,7 @@ class unknown_client:
                     if ans == messagebox.OK:
                         self.window.register_to_login_frame()
 
-                if answer[0] == 'login-w':
+                elif answer[0] == 'login-w':
                     self.window.login_to_rooms_frame()
                 elif answer[0] == 'login-f':
                     ans = messagebox.showerror('failed login', 'want to try again?',type=messagebox.RETRYCANCEL)
@@ -125,7 +124,7 @@ class unknown_client:
                         self.window.login_to_register_frame()
 
 
-                if answer[0] == 'room-exists':
+                elif answer[0] == 'room-exists':
                     messagebox.showinfo('room already exists', 'you tried to create a room that already exists',type=messagebox.OK)
                 elif answer[0] == 'room-created':
                     self.window.create_to_waiting()
@@ -151,7 +150,7 @@ class unknown_client:
                     if ans == messagebox.CANCEL:
                         self.end()
 
-                if answer[0] == 'same-type-error':
+                elif answer[0] == 'same-type-error':
                     messagebox.showerror('same type as room creator', f'room creator type is: {answer[1]}, you need to connect as the opposite type')
                 elif answer[0] == 'room-closing-failed':
                     messagebox.showerror('room closing failure', 'room closing after connection failed, check if room code is correct, if correct then there was an error, try again')
@@ -169,7 +168,6 @@ class unknown_client:
                 self.server.close()
                 messagebox.showerror('failed communication with server', f'{error}')
                 break
-
 
     def connecting_peers(self,peer_address,peer_port,peer_type):
         if peer_type == 'Controlling':
@@ -190,7 +188,6 @@ class unknown_client:
             self.server.sendall(msg_len.to_bytes(8, sys.byteorder) + pickled_msg)
             controlling_peer.connect(peer_address,peer_port)
             self.end_all()
-
 
     def lock_until_peer_ready_to_connect(self,peer_type):
         while True:

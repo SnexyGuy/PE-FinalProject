@@ -7,9 +7,7 @@ import hashlib
 import secrets
 
 
-
-#functions to handle closing and activating threads
-
+# functions to handle closing and activating threads
 
 thread_event_array : dict[threading.Thread.ident,threading.Event] = {}
 
@@ -17,16 +15,23 @@ thread_event_array : dict[threading.Thread.ident,threading.Event] = {}
 def thread_event_setter(thread_id : threading.Thread.ident):
     thread_event_array.update({thread_id : threading.Event()})
 
+
 def thread_event_remove(thread_id: threading.Thread.ident):
     thread_event_array.pop(thread_id)
+
+
 def thread_closer(thread_id : threading.Thread.ident):
     thread_event_array[thread_id].set()
+
+
 def end_all_threads():
     for thread in thread_event_array:
         thread_event_array[thread].set()
 
+
 def delete_all_thread_flags():
     thread_event_array.clear()
+
 
 def check_thread_flag(thread_id):
     if thread_id in thread_event_array and thread_event_array[thread_id].is_set():
@@ -34,12 +39,8 @@ def check_thread_flag(thread_id):
     else:
         return False
 
+# function that generates new room passwords
 
-
-
-
-
-#function that generates new room passwords
 
 def generate_room_code(db : sqlite3.Connection):
     while True:
@@ -51,11 +52,8 @@ def generate_room_code(db : sqlite3.Connection):
         elif code_fetched == 0:
             return generated_code
 
+# function that ensures all data received ---> returns all data
 
-
-
-
-#function that ensures all data received ---> returns all data
 
 def recv_all(conn : socket.socket):
     data=b''
@@ -68,11 +66,37 @@ def recv_all(conn : socket.socket):
     return data
 
 
-#data base handler class
+# functions to ensure safe multithreaded usage with sqlite3
 
-class DataBaseHandler():
+def get_sqlite3_thread_safety():
+
+    # Mape value from SQLite's THREADSAFE to Python's DBAPI 2.0
+    # threadsafety attribute.
+    sqlite_threadsafe2python_dbapi = {0: 0, 2: 1, 1: 3}
+    conn = sqlite3.connect(":memory:")
+    threadsafety = conn.execute(
+        """
+select * from pragma_compile_options
+where compile_options like 'THREADSAFE=%'
+"""
+    ).fetchone()[0]
+    conn.close()
+
+    threadsafety_value = int(threadsafety.split("=")[1])
+
+    return sqlite_threadsafe2python_dbapi[threadsafety_value]
+
+# database handler class
+
+
+class DataBaseHandler:
     def __init__(self):
-        self.connection=sqlite3.connect('rdp_db.sql')
+        if get_sqlite3_thread_safety() == 3:
+            check_same_thread = False
+        else:
+            check_same_thread = True
+
+        self.connection=sqlite3.connect('rdp_db.sql', check_same_thread=check_same_thread)
         self.connection.executescript("""
         \
             CREATE TABLE IF NOT EXISTS usersdata (
@@ -103,6 +127,7 @@ class DataBaseHandler():
             return 'f'
 
         pass
+
     def register(self,username,hashed_password):
         try:
             response = self.connection.execute("SELECT EXISTS(SELECT 1 FROM usersdata WHERE username=?)", (username,))
@@ -129,7 +154,6 @@ class DataBaseHandler():
         except sqlite3.Error as err:
             return 'f'
 
-
     def create_room(self,address,port,type,code):
         try:
             response = self.connection.execute("SELECT EXISTS(SELECT 1 FROM open_rooms WHERE creator_address = ? AND creator_port = ? AND creator_type = ?)", (address, port, type))
@@ -142,6 +166,7 @@ class DataBaseHandler():
                 return 'w'
         except sqlite3.Error as err:
             return 'f'
+
     def end_room(self,address,port,type,password):
         try:
             response = self.connection.execute("SELECT EXISTS(SELECT 1 FROM open_rooms WHERE creator_address = ? AND creator_port = ? AND creator_type = ? AND password = ? )", (address, port, type, password))
@@ -187,17 +212,13 @@ class DataBaseHandler():
 
 
 
-
-
-
-
-
 class Server:
     def __init__(self, host):
         self.host=host
         self.socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connections : dict [tuple[str,int],socket.socket] = {}
         self.db=DataBaseHandler()
+
     def listen(self):
         self.socket.bind((self.host,9999))
         self.port=self.socket.getsockname()[1]
@@ -217,7 +238,8 @@ class Server:
             client_thread=threading.Thread(target=self.handle_client, args=(connection, address))
             client_thread.start()
             thread_event_setter(client_thread.ident)
-    def handle_client(self,connection : socket.socket,address):
+
+    def handle_client(self,connection : socket.socket,client_address):
         while True:
             if check_thread_flag(threading.get_ident()):
                 connection.close()
@@ -323,8 +345,8 @@ class Server:
                         peer_sock.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
             except socket.error:
                 break
-        print(f"Connection from {address} closed")
-        self.connections.pop(address)
+        print(f"Connection from {client_address} closed")
+        self.connections.pop(client_address)
         connection.close()
 
     def find_connection(self, address : tuple[str,int]):

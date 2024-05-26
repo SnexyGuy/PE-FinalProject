@@ -5,8 +5,6 @@ from client_gui import *
 from general_important_functions import *
 
 
-
-
 class Controlling:
     def __init__(self, host, gui_obj : gui):
         self.host=host
@@ -21,15 +19,11 @@ class Controlling:
         self.window.screen_canvas.bind('<ButtonRelease>',self.send_mouse)
         self.window.root.protocol('WM_DELETE_WINDOW',self.tk_close)
 
-
-
-
     # function for handling tkinter window closing
     def tk_close(self):
         end_all_threads()
         print('tk close')
         self.window.root.destroy()
-
 
     def connect(self,peer_host, peer_port):
         try:
@@ -124,6 +118,7 @@ class Controlling:
                 break
         print(f"Connection from {address} closed")
         self.listen_to.close()
+
     def start(self):
         listen_thread=threading.Thread(target=self.listen)
         listen_thread.start()

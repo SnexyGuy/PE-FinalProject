@@ -81,7 +81,7 @@ class gui:
         self.enter_room_button = tk.Button(self.connect_room_frame, text="enter room")
         self.enter_room_button.pack()
 
-        self.connect_to_create_button=tk.Button(self.connect_room_frame,text='to room connection',command=self.roomConn_to_roomCreate)
+        self.connect_to_create_button=tk.Button(self.connect_room_frame,text='to room creation',command=self.roomConn_to_roomCreate)
         self.connect_to_create_button.pack()
 
         #-----------------------------------------------------------------------------------------
@@ -104,8 +104,8 @@ class gui:
         self.waiting_label = tk.Label(self.waiting_frame, text="waiting for your friend to enter")
         self.waiting_label.pack()
 
-        self.code_label = tk.Label(self.waiting_frame, text=" ")
-        self.code_label.pack()
+        self.code_text = tk.Text(self.waiting_frame,height=2,borderwidth=0)
+        self.code_text.pack()
 
         #-----------------------------------------------------------
         self.screen_frame=tk.Frame(self.root)
@@ -117,7 +117,6 @@ class gui:
         self.screen_canvas.pack(fill='both', expand=True)
         self.screen_canvas.bind('<Configure>', self.screen_frame_resize)
         self.received_screen : Image.Image = ImageGrab.grab()
-
 
     def welcome_to_register_frame(self):
         self.register_frame.pack()
@@ -160,8 +159,8 @@ class gui:
         self.connect_room_frame.forget()
 
     def show_room_code(self,code):
-        self.code_label.configure(text=f'room code:\n{code}')
-
+        self.code_text.insert(1.0,f'room code:\n{code}')
+        self.code_text.configure(state='disabled')
 
     #screen share handling------------------------------------------
     def screen_frame_resize(self, event : tk.Event):
@@ -181,6 +180,7 @@ class gui:
 
         event.widget.image = display_img
         self.root.update()
+
     def update_screen(self,img):
 
         if img is None:
@@ -201,7 +201,9 @@ class gui:
 
         self.screen_canvas.image = display_img
         self.root.update()
+
     def receive_screen(self,screen):
         self.update_screen(screen)
+
     def start(self):
         self.root.mainloop()

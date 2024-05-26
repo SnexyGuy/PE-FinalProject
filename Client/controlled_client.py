@@ -6,10 +6,6 @@ import pyautogui
 from general_important_functions import *
 
 
-
-
-
-
 class Controlled:
     def __init__(self, host):
         self.host=host
@@ -20,6 +16,7 @@ class Controlled:
         self.connected_to=None
         self.controlled_screen_width=win32api.GetSystemMetrics(0)
         self.controlled_screen_height=win32api.GetSystemMetrics(1)
+
     def connect(self,peer_host, peer_port):
         try:
             connection=socket.create_connection((peer_host,peer_port))
@@ -77,6 +74,7 @@ class Controlled:
                 self.send_to.close()
                 break
         return
+
     def receive_data(self, connection, address):
         while True:
             if check_thread_flag(threading.get_ident()):
@@ -117,6 +115,7 @@ class Controlled:
                 break
         print(f"Connection from {address} closed")
         self.listen_to.close()
+
     def start(self):
         listen_thread=threading.Thread(target=self.listen)
         listen_thread.start()
