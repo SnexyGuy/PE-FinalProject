@@ -7,7 +7,7 @@ from general_important_functions import *
 class unknown_client:
     def __init__(self,host):
         self.host=host
-        self.server_address='192.168.56.1'
+        self.server_address='172.29.32.1'
         self.server_port = 9999
 
         self.window=gui()
@@ -21,6 +21,7 @@ class unknown_client:
         try:
             connection = socket.create_connection((self.server_address,self.server_port))
             self.server = connection
+            self.port=self.server.getsockname()[1]
             print(f"Connected to {self.server.getpeername()[0]} : {self.server.getpeername()[1]}")
 
             confirmation=recv_all(self.server).decode()
@@ -28,6 +29,7 @@ class unknown_client:
             if confirmation == 'continue':
                 receive_from_server_thread=threading.Thread(target=self.receive_from_server)
                 receive_from_server_thread.start()
+                thread_event_setter(receive_from_server_thread.ident)
                 self.window.connect_to_welcome()
                 return 'w'
             else:
@@ -97,6 +99,13 @@ class unknown_client:
 
     def receive_from_server(self):
         while True:
+
+            if check_thread_flag(threading.get_ident()):
+                self.server.close()
+                thread_event_remove(threading.get_ident())
+                delete_all_thread_flags()
+                break
+
             try:
                 received=recv_all(self.server)
                 answer=pickle.loads(received)
@@ -132,18 +141,15 @@ class unknown_client:
                     messagebox.showinfo('room created successfuly', 'room created- send the code to your friend',type=messagebox.OK)
 
                     if answer[2] == 'Controlling':
-                        controlling_peer = Controlling(self.host,self.window)
-                        controlling_peer.start()
-                        cing_address,cing_port=self.lock_until_peer_ready_to_connect('Controlling')
-                        controlling_peer.connect(cing_address,cing_port)
-                        self.end_all()
-                    elif answer[2] == 'Controlled':
-                        controlled_peer = Controlled(self.host)
-                        controlled_peer.start()
-                        cod_address,cod_port=self.lock_until_peer_ready_to_connect('Controlled')
-                        controlled_peer.connect(cod_address,cod_port)
+                        self.controlling_peer = Controlling(self.host,self.port,self.window)
+                        self.controlling_peer.window.waiting_to_screen_share()
+                        self.controlling_peer.start()
                         self.end_all()
 
+                    elif answer[2] == 'Controlled':
+                        self.controlled_peer = Controlled(self.host,self.port)
+                        self.controlled_peer.start()
+                        self.end_all()
 
                 elif answer[0] == 'room-creation-failed':
                     ans=messagebox.showerror('failed room creation', 'want to try again?', type=messagebox.RETRYCANCEL)
@@ -171,35 +177,17 @@ class unknown_client:
 
     def connecting_peers(self,peer_address,peer_port,peer_type):
         if peer_type == 'Controlling':
-            controlled_peer=Controlled(self.host)
+            controlled_peer=Controlled(self.host,self.port)
             controlled_peer.start()
-            signal_msg = ['peers', 'ready-for-connection', 'Controlled']
-            pickled_msg = pickle.dumps(signal_msg)
-            msg_len = len(pickled_msg)
-            self.server.sendall(msg_len.to_bytes(8, sys.byteorder) + pickled_msg)
             controlled_peer.connect(peer_address,peer_port)
             self.end_all()
         elif peer_type == 'Controlled':
-            controlling_peer = Controlling(self.host,self.window)
+            controlling_peer = Controlling(self.host,self.port,self.window)
+            controlling_peer.window.connect_to_screen_share()
             controlling_peer.start()
-            signal_msg = ['peers', 'ready-for-connection', 'Controlling']
-            pickled_msg = pickle.dumps(signal_msg)
-            msg_len = len(pickled_msg)
-            self.server.sendall(msg_len.to_bytes(8, sys.byteorder) + pickled_msg)
             controlling_peer.connect(peer_address,peer_port)
             self.end_all()
 
-    def lock_until_peer_ready_to_connect(self,peer_type):
-        while True:
-            message_bytes = recv_all(self.server)
-            message = pickle.loads(message_bytes)
-            if message[0] == 'ready-to-connect':
-                if message[1] == peer_type:
-                    continue
-                else:
-                    return (message[2],message[3])
-            else:
-                continue
 
     def end(self):
         self.server.close()
@@ -209,7 +197,6 @@ class unknown_client:
     def end_all(self):
         self.server.close()
         end_all_threads()
-        delete_all_thread_flags()
         del self
 
     def start(self):

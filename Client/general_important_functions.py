@@ -34,7 +34,7 @@ def thread_closer(thread_id : threading.Thread.ident):
 
 
 def end_all_threads():
-    for thread in thread_event_array:
+    for thread in list(thread_event_array):
         thread_event_array[thread].set()
 
 

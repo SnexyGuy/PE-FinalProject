@@ -6,8 +6,9 @@ from general_important_functions import *
 
 
 class Controlling:
-    def __init__(self, host, gui_obj : gui):
+    def __init__(self, host,port, gui_obj : gui):
         self.host=host
+        self.port=port
 
         self.socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.listen_to=None
@@ -31,6 +32,12 @@ class Controlling:
             self.send_to=connection
             print(f"Connected to {peer_host} : {peer_port}")
 
+            if self.listen_to is None:
+                msg = (self.host,self.port)
+                pickled_msg=pickle.dumps(msg)
+                msg_len=len(pickled_msg)
+                self.send_to.sendall(msg_len.to_bytes(8,sys.byteorder)+pickled_msg)
+
             #sending_thread=threading.Thread(target=self.send_data, daemon=True)
             #sending_thread.start()
             return
@@ -38,9 +45,9 @@ class Controlling:
             print(f"Failed to connect to {peer_host} : {peer_port} - Error: {e}")
             return
 
+
     def listen(self):
-        self.socket.bind((self.host, 0))
-        self.port=self.socket.getsockname()[1]
+        self.socket.bind((self.host, self.port))
         self.socket.listen(10)
         print(f"Listening for connections on {self.host} : {self.port}")
 
@@ -53,6 +60,11 @@ class Controlling:
 
             connection, address = self.socket.accept()
             self.listen_to=connection
+
+            if self.send_to is None:
+                bytes = recv_all(self.listen_to)
+                peer_address, peer_port = pickle.loads(bytes)
+                self.connect(peer_address,peer_port)
 
             print(f"Accepted connection from {address}")
 

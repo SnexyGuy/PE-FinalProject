@@ -1,9 +1,11 @@
+import socket
+
 from unknown_client import *
 
 
 
 
-address ='10.0.0.9'
+address =socket.gethostbyname(socket.gethostname())
 
 client = unknown_client(address)
 client.start()

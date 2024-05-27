@@ -162,6 +162,14 @@ class gui:
         self.code_text.insert(1.0,f'room code:\n{code}')
         self.code_text.configure(state='disabled')
 
+    def waiting_to_screen_share(self):
+        self.screen_frame.pack(fill='both', expand=True)
+        self.waiting_frame.forget()
+
+    def connect_to_screen_share(self):
+        self.screen_frame.pack(fill='both', expand=True)
+        self.connect_room_frame.forget()
+
     #screen share handling------------------------------------------
     def screen_frame_resize(self, event : tk.Event):
         display= self.received_screen

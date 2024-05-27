@@ -334,16 +334,7 @@ class Server:
                             msg = pickle.dumps(msg_list)
                             msg_len=len(msg)
                             connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
-                elif data[0] == 'peers':
-                    if data[1] == 'ready-for-connection':
-                        address = connection.getpeername()
-                        peer_sock=self.find_connection(address)
-
-                        msg_list=['ready-to-connect', data[2], address[0], address[1]]
-                        msg=pickle.dumps(msg_list)
-                        msg_len=len(msg)
-                        peer_sock.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
-            except socket.error:
+            except socket.error as err:
                 break
         print(f"Connection from {client_address} closed")
         self.connections.pop(client_address)

@@ -4,11 +4,13 @@ import pickle
 import lz4.frame
 import pyautogui
 from general_important_functions import *
+pyautogui.FAILSAFE=False
 
 
 class Controlled:
-    def __init__(self, host):
+    def __init__(self, host,port):
         self.host=host
+        self.port=port
 
         self.socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.listen_to=None
@@ -23,6 +25,12 @@ class Controlled:
             self.send_to=connection
             print(f"Connected to {peer_host} : {peer_port}")
 
+            if self.listen_to is None:
+                msg = (self.host,self.port)
+                pickled_msg=pickle.dumps(msg)
+                msg_len=len(pickled_msg)
+                self.send_to.sendall(msg_len.to_bytes(8,sys.byteorder)+pickled_msg)
+
             sending_thread=threading.Thread(target=self.send_data)
             sending_thread.start()
             thread_event_setter(sending_thread.ident)
@@ -32,8 +40,7 @@ class Controlled:
             return
 
     def listen(self):
-        self.socket.bind((self.host, 0))
-        self.port=self.socket.getsockname()[1]
+        self.socket.bind((self.host, self.port))
         self.socket.listen(10)
         print(f"Listening for connections on {self.host} : {self.port}")
 
@@ -41,9 +48,15 @@ class Controlled:
             if check_thread_flag(threading.get_ident()):
                 self.socket.close()
                 thread_event_remove(threading.get_ident())
+                break
 
             connection, address = self.socket.accept()
             self.listen_to=connection
+
+            if self.send_to is None:
+                bytes = recv_all(self.listen_to)
+                peer_address, peer_port = pickle.loads(bytes)
+                self.connect(peer_address,peer_port)
 
             print(f"Accepted connection from {address}")
 
@@ -59,6 +72,7 @@ class Controlled:
             if check_thread_flag(threading.get_ident()):
                 self.send_to.close()
                 thread_event_remove(threading.get_ident())
+                break
 
             try:
                 screen_grab=ImageGrab.grab()
@@ -80,6 +94,7 @@ class Controlled:
             if check_thread_flag(threading.get_ident()):
                 connection.close()
                 thread_event_remove(threading.get_ident())
+                break
 
             try:
                 recv_data=recv_all(connection)
