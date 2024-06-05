@@ -18,7 +18,7 @@ print("Socket successfully created")
 # instead we have inputted an empty string
 # this makes the server listen to requests
 # coming from other computers on the network
-s.bind(('10.0.0.10', 9999))
+s.bind(('10.0.0.9', 9999))
 print('socket binded')
 
 # put the socket into listening mode
@@ -32,9 +32,8 @@ def send_d(conn):
 
         img = pickle.dumps(im)
 
-        img = lzma.compress(img)
         try:
-            conn.send(img)
+            conn.sendall(img)
         except socket.error as err:
             print(f'ERROR: {err}')
             conn.close()

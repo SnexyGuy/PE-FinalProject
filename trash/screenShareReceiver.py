@@ -11,19 +11,18 @@ s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
 
 # connect to the server on local computer
-s.connect(('10.0.0.10', 9999))
+s.connect(('10.0.0.9', 9999))
 
 # receive data from the server and decoding to get the string.
 imag =b''
 while True:
-    data=s.recv(1000000)
+    data=s.recv(4096)
     if not data:
         break
     imag=imag+data
 
 #image=Image.open(image)
-uncomp=lzma.decompress(imag)
-image=pickle.loads(uncomp)
+image=pickle.loads(imag)
 image.show()
 # close the connection
 s.close()

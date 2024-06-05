@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import ImageGrab, ImageTk, Image
-
+import time
+import clipboard
 
 
 
@@ -107,6 +108,9 @@ class gui:
         self.code_text = tk.Text(self.waiting_frame,height=2,borderwidth=0)
         self.code_text.pack()
 
+        self.copy_code_button = tk.Button(self.waiting_frame, text='copy code')
+        self.copy_code_button.pack()
+
         #-----------------------------------------------------------
         self.screen_frame=tk.Frame(self.root)
         self.screen_canvas=tk.Canvas(self.screen_frame, bg='green')
@@ -159,16 +163,33 @@ class gui:
         self.connect_room_frame.forget()
 
     def show_room_code(self,code):
-        self.code_text.insert(1.0,f'room code:\n{code}')
+        self.code_text.insert(1.0,f'room code:\n')
+        self.code_text.insert(2.0, f'{code}')
         self.code_text.configure(state='disabled')
 
     def waiting_to_screen_share(self):
+        time.sleep(1.5)
         self.screen_frame.pack(fill='both', expand=True)
         self.waiting_frame.forget()
 
     def connect_to_screen_share(self):
         self.screen_frame.pack(fill='both', expand=True)
         self.connect_room_frame.forget()
+
+    def copy_room_code_to_clipboard(self):
+        txt=self.retrieve_code_text_input()
+        clipboard.copy(txt)
+
+    def retrieve_code_text_input(self):
+        input = self.code_text.get('2.0' , 'end-1c')
+        return input
+
+
+    '''r.withdraw()
+        r.clipboard_clear()
+        r.clipboard_append('i can has clipboardz?')
+        r.update()  # now it stays on the clipboard after the window is closed
+        r.destroy()'''
 
     #screen share handling------------------------------------------
     def screen_frame_resize(self, event : tk.Event):

@@ -27,9 +27,7 @@ class Controlled:
 
             if self.listen_to is None:
                 msg = (self.host,self.port)
-                pickled_msg=pickle.dumps(msg)
-                msg_len=len(pickled_msg)
-                self.send_to.sendall(msg_len.to_bytes(8,sys.byteorder)+pickled_msg)
+                send_all(self.send_to,msg)
 
             sending_thread=threading.Thread(target=self.send_data)
             sending_thread.start()
@@ -59,8 +57,6 @@ class Controlled:
                 self.connect(peer_address,peer_port)
 
             print(f"Accepted connection from {address}")
-
-
 
 
             receive_thread=threading.Thread(target=self.receive_data, args=(self.listen_to, address))
