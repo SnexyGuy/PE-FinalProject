@@ -27,7 +27,7 @@ class unknown_client:
             self.port=self.server.getsockname()[1]
             print(f"Connected to {self.server.getpeername()[0]} : {self.server.getpeername()[1]}")
 
-            confirmation=recv_all(self.server).decode()
+            confirmation=recv_all(self.server)
 
             if confirmation == 'continue':
                 receive_from_server_thread=threading.Thread(target=self.receive_from_server)
@@ -49,11 +49,9 @@ class unknown_client:
     def handling_login(self):
         username = self.window.login_username_entry.get()
         password = self.window.login_password_entry.get()
-        data_list=['l',username,password.encode()]
-        data = pickle.dumps(data_list)
-        msg_size = len(data)
+        data=['l',username,password.encode()]
         try:
-            self.server.sendall(msg_size.to_bytes(8,sys.byteorder)+data)
+            send_all(self.server,data)
         except socket.error as error:
             self.server.close()
             messagebox.showerror('failed communication with server', f'{error}')
@@ -61,11 +59,9 @@ class unknown_client:
     def handling_register(self):
         username = self.window.register_username_entry.get()
         password = self.window.register_password_entry.get()
-        data_list = ['r', username, password.encode()]
-        data = pickle.dumps(data_list)
-        msg_size = len(data)
+        data = ['r', username, password.encode()]
         try:
-            self.server.sendall(msg_size.to_bytes(8,sys.byteorder)+data)
+            send_all(self.server,data)
         except socket.error as error:
             self.server.close()
             messagebox.showerror('failed communication with server', f'{error}')
@@ -78,10 +74,8 @@ class unknown_client:
             self.client_type='Controlled'
 
         try:
-            msg_list=['rooms','create-room',self.client_type]
-            msg=pickle.dumps(msg_list)
-            msg_len=len(msg)
-            self.server.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+            msg=['rooms','create-room',self.client_type]
+            send_all(self.server,msg)
         except socket.error as error:
             self.server.close()
             messagebox.showerror('failed communication with server', f'{error}')
@@ -93,10 +87,9 @@ class unknown_client:
             self.client_type='Controlling'
         elif ans == messagebox.NO:
             self.client_type='Controlled'
-        msg_list=['rooms','connect-to-room',self.client_type,code]
-        msg=pickle.dumps(msg_list)
-        msg_len=len(msg)
-        self.server.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+        msg=['rooms','connect-to-room',self.client_type,code]
+
+        send_all(self.server,msg)
 
     def receive_from_server(self):
         while True:
@@ -106,8 +99,7 @@ class unknown_client:
                 delete_all_thread_flags()
                 break
             try:
-                received=recv_all(self.server)
-                answer=pickle.loads(received)
+                answer=recv_all(self.server)
 
                 if answer[0] == 'registration-w':
                     self.window.register_to_login_frame()

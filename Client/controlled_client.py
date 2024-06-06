@@ -52,8 +52,7 @@ class Controlled:
             self.listen_to=connection
 
             if self.send_to is None:
-                bytes = recv_all(self.listen_to)
-                peer_address, peer_port = pickle.loads(bytes)
+                peer_address, peer_port = recv_all(self.listen_to)
                 self.connect(peer_address,peer_port)
 
             print(f"Accepted connection from {address}")
@@ -73,11 +72,7 @@ class Controlled:
             try:
                 screen_grab=ImageGrab.grab()
 
-                data=pickle.dumps(screen_grab)
-                compressed_data=lz4.frame.compress(data)
-                msg_length=len(compressed_data)
-
-                self.send_to.sendall(msg_length.to_bytes(8,sys.byteorder)+compressed_data)
+                send_all(self.send_to,screen_grab)
 
             except socket.error as err:
                 print(err)
@@ -93,9 +88,8 @@ class Controlled:
                 break
 
             try:
-                recv_data=recv_all(connection)
-                decoded_data=recv_data.decode()
-                data=decoded_data.split('~')
+                data=recv_all(connection)
+
                 if data[0]=='k':
                     keycode=int(data[1])
                     scancode=int(data[2])

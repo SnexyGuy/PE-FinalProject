@@ -5,6 +5,7 @@ import sqlite3
 import pickle
 import hashlib
 import secrets
+import lz4.frame
 
 
 # functions to handle closing and activating threads
@@ -54,7 +55,6 @@ def generate_room_code(db : sqlite3.Connection):
 
 # function that ensures all data received ---> returns all data
 
-
 def recv_all(conn : socket.socket):
     data=b''
     pck_sz= conn.recv(8)
@@ -63,7 +63,17 @@ def recv_all(conn : socket.socket):
         data=data+conn.recv(size-len(data))
         if len(data)==size:
             break
-    return data
+    decompressed_data = lz4.frame.decompress(data)
+    msg = pickle.loads(decompressed_data)
+    return msg
+
+
+def send_all(conn : socket.socket, msg):
+    pickled_msg = pickle.dumps(msg)
+    compressed_data = lz4.frame.compress(pickled_msg)
+    msg_len=len(compressed_data)
+    msg_len_bytes=msg_len.to_bytes(8,sys.byteorder)
+    conn.sendall(msg_len_bytes+compressed_data)
 
 
 # functions to ensure safe multithreaded usage with sqlite3
@@ -228,10 +238,9 @@ class Server:
         while True:
             connection, address = self.socket.accept()
 
-            conn_confirm='continue'.encode()
-            msg_size=len(conn_confirm)
+            conn_confirm='continue'
 
-            connection.sendall(msg_size.to_bytes(8,sys.byteorder)+conn_confirm)
+            send_all(connection,conn_confirm)
 
             self.connections.update({address : connection})
             print(f"Accepted connection from {address}")
@@ -247,93 +256,52 @@ class Server:
                 break
 
             try:
-                recv_data=recv_all(connection)
-                data=pickle.loads(recv_data)
+                data = recv_all(connection)
+                msg=''
                 if data[0] == 'r' or data[0] == 'l':
                     if data[0] == 'r':
                         hashed_pwd=hashlib.sha256(data[2]).hexdigest()
                         ans=self.db.register(data[1],hashed_pwd)
                         if ans == 'w':
-                            msg_list=['registration-w']
-                            msg=pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['registration-w']
                         elif ans == 'f':
-                            msg_list = ['registration-f']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg = ['registration-f']
                         elif ans == 'exist':
-                            msg_list = ['registration-to-login']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg = ['registration-to-login']
 
                     elif data[0] == 'l':
                         hashed_pwd=hashlib.sha256(data[2]).hexdigest()
                         ans=self.db.login_check(data[1],hashed_pwd)
                         if ans == 'w':
-                            msg_list=['login-w']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['login-w']
                         elif ans == 'f':
-                            msg_list=['login-f']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['login-f']
                         elif ans == 'noexist':
-                            msg_list=['login-to-register']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['login-to-register']
                 elif data[0] == 'rooms':
                     if data[1] == 'create-room':
                         address,port = connection.getpeername()
                         code=generate_room_code(self.db.connection)
                         ans=self.db.create_room(address,port,data[2],code)
                         if ans == 'exist':
-                            msg_list=['room-exists']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['room-exists']
                         elif ans == 'w':
-                            msg_list=['room-created',code,data[2]]
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['room-created',code,data[2]]
                         elif ans == 'f':
-                            msg_list=['room-creation-failed']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['room-creation-failed']
                     elif data[1] == 'connect-to-room':
                         ans=self.db.enter_room(data[2],data[3])
                         if ans == 'err-same-type':
-                            msg_list=['same-type-error', data[2]]
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['same-type-error', data[2]]
                         elif ans == 'noendroom':
-                            msg_list=['room-closing-failed']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['room-closing-failed']
                         elif ans == 'noexist':
-                            msg_list=['connect-to-nonexistent-room']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['connect-to-nonexistent-room']
                         elif ans == 'f':
-                            msg_list=['connecting-to-room-failed']
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=['connecting-to-room-failed']
                         else:
-                            msg_list=[ans[0],ans[1],ans[2]]
-                            msg = pickle.dumps(msg_list)
-                            msg_len=len(msg)
-                            connection.sendall(msg_len.to_bytes(8,sys.byteorder)+msg)
+                            msg=[ans[0],ans[1],ans[2]]
+                send_all(connection,msg)
             except socket.error as err:
                 break
         print(f"Connection from {client_address} closed")

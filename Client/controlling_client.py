@@ -30,9 +30,8 @@ class Controlling:
 
             if self.listen_to is None:
                 msg = (self.host,self.port)
-                pickled_msg=pickle.dumps(msg)
-                msg_len=len(pickled_msg)
-                self.send_to.sendall(msg_len.to_bytes(8,sys.byteorder)+pickled_msg)
+
+                send_all(self.send_to,msg)
 
             #sending_thread=threading.Thread(target=self.send_data, daemon=True)
             #sending_thread.start()
@@ -58,8 +57,7 @@ class Controlling:
             self.listen_to=connection
 
             if self.send_to is None:
-                bytes = recv_all(self.listen_to)
-                peer_address, peer_port = pickle.loads(bytes)
+                peer_address, peer_port = recv_all(self.listen_to)
                 self.connect(peer_address,peer_port)
 
             print(f"Accepted connection from {address}")
@@ -74,31 +72,23 @@ class Controlling:
         keyboard_keycode = event.keycode
         keyboard_scancode = win32api.MapVirtualKey(keyboard_keycode, 4)
 
-        data = f'k~{keyboard_keycode}~{keyboard_scancode}'
-        msg_to_send=data.encode()
-        msg_len=len(msg_to_send)
-        #data = input('send: ')
+        data = ['k',keyboard_keycode,keyboard_scancode]
         try:
-            self.send_to.sendall(msg_len.to_bytes(8,sys.byteorder)+msg_to_send)
+            send_all(self.send_to,data)
         except socket.error as e:
             print(f"Failed to send data - Error: {e}")
             self.send_to.close()
 
     def send_mouse(self,event):
         data=''
-        msg_to_send=b''
-        msg_len = 0
         match int(event.type):
             case 4:  #mouse-down
-                data=f'm~d~{event.num}~{event.x}~{event.y}~{self.window.actual_screenShare_size[0]}~{self.window.actual_screenShare_size[1]}'
-                msg_to_send=data.encode()
-                msg_len=len(msg_to_send)
+                data=['m','d',event.num,event.x,event.y,self.window.actual_screenShare_size[0],self.window.actual_screenShare_size[1]]
+
             case 5: #mouse-up
-                data=f'm~u~{event.num}~{event.x}~{event.y}~{self.window.actual_screenShare_size[0]}~{self.window.actual_screenShare_size[1]}'
-                msg_to_send = data.encode()
-                msg_len = len(msg_to_send)
+                data=['m','u',event.num,event.x,event.y,self.window.actual_screenShare_size[0],self.window.actual_screenShare_size[1]]
         try:
-            self.send_to.sendall(msg_len.to_bytes(8,sys.byteorder)+msg_to_send)
+            send_all(self.send_to,data)
         except socket.error as e:
             print(f"Failed to send data - Error: {e}")
             self.send_to.close()
@@ -111,11 +101,7 @@ class Controlling:
                 break
 
             try:
-                data=recv_all(connection)
-
-                decompressed_data=lz4.frame.decompress(data)
-
-                img=pickle.loads(decompressed_data)
+                img=recv_all(connection)
 
                 self.window.receive_screen(img)
 

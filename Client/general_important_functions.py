@@ -2,6 +2,7 @@ import socket
 import sys
 import threading
 import pickle
+import lz4.frame
 
 # function that ensures all data received ---> returns all data
 
@@ -14,14 +15,17 @@ def recv_all(conn : socket.socket):
         data=data+conn.recv(size-len(data))
         if len(data)==size:
             break
-    return data
+    decompressed_data = lz4.frame.decompress(data)
+    msg = pickle.loads(decompressed_data)
+    return msg
 
 
 def send_all(conn : socket.socket, msg):
     pickled_msg = pickle.dumps(msg)
-    msg_len=len(pickled_msg)
+    compressed_data = lz4.frame.compress(pickled_msg)
+    msg_len=len(compressed_data)
     msg_len_bytes=msg_len.to_bytes(8,sys.byteorder)
-    conn.sendall(msg_len_bytes+pickled_msg)
+    conn.sendall(msg_len_bytes+compressed_data)
 
 
 
