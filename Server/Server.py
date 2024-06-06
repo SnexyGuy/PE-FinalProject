@@ -6,6 +6,7 @@ import pickle
 import hashlib
 import secrets
 import lz4.frame
+import server_security
 
 
 # functions to handle closing and activating threads
@@ -74,6 +75,14 @@ def send_all(conn : socket.socket, msg):
     msg_len=len(compressed_data)
     msg_len_bytes=msg_len.to_bytes(8,sys.byteorder)
     conn.sendall(msg_len_bytes+compressed_data)
+
+def exchange_keys(socket : socket.socket,rsa_public_key): #still needs work not completed
+    conn_confirm = ['continue', rsa_public_key]
+
+    send_all(socket, conn_confirm)
+
+    aes_key = recv_all(socket)
+
 
 
 # functions to ensure safe multithreaded usage with sqlite3
@@ -228,6 +237,8 @@ class Server:
         self.socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connections : dict [tuple[str,int],socket.socket] = {}
         self.db=DataBaseHandler()
+        self.aes_key = server_security.generate_aes_key()
+        self.private_rsa_key, self.public_rsa_key = server_security.rsa_key_generator()
 
     def listen(self):
         self.socket.bind((self.host,9999))

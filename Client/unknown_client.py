@@ -3,6 +3,7 @@ from controlling_client import *
 from controlled_client import *
 from tkinter import messagebox
 from general_important_functions import *
+import client_security
 
 
 class unknown_client:
@@ -10,6 +11,9 @@ class unknown_client:
         self.host=host
         self.server_address='192.168.56.1'
         self.server_port = 9999
+
+        self.aes_key = client_security.generate_aes_key()
+        self.private_rsa_key,self.public_rsa_key = client_security.rsa_key_generator()
 
         self.window=gui()
         self.window.register_button.configure(command=self.handling_register)

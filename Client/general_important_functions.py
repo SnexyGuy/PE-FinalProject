@@ -27,7 +27,14 @@ def send_all(conn : socket.socket, msg):
     msg_len_bytes=msg_len.to_bytes(8,sys.byteorder)
     conn.sendall(msg_len_bytes+compressed_data)
 
+def key_exchange(socket : socket.socket): #still needs work not completed
+    confirmation = recv_all(socket)
 
+    server_public_rsa_key = confirmation[1]
+
+    encrypted_aes_key = None
+
+    msg_to_server = []
 
 # functions to handle closing and activating threads
 
